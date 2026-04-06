@@ -506,7 +506,7 @@ async function handlePlayerLogin() {
   if (btn) btn.disabled = true;
   const { data, error } = await sb
     .from('players')
-    .select('id, name, code, target_id, eliminations, active')
+    .select('id, name, code, target_id, kills, active')
     .eq('code', STATE.loginCode.trim().toUpperCase())
     .single();
   if (error || !data) {
@@ -785,7 +785,7 @@ function renderPlayer() {
 
 async function refreshPlayerView() {
   const [{ data: p }, { data: gs }, { data: players }] = await Promise.all([
-    sb.from('players').select('id, name, code, target_id, eliminations, active').eq('id', STATE.currentPlayer.id).single(),
+    sb.from('players').select('id, name, code, target_id, kills, active').eq('id', STATE.currentPlayer.id).single(),
     sb.from('game_state').select('status').eq('id',1).single(),
     sb.from('players').select('id, name, active').order('name'),
   ]);
