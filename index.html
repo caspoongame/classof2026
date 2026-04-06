@@ -423,6 +423,15 @@ async function submitKillCode(code) {
   if (STATE.gameStatus !== 'open' && killer.target_id !== victim.id) {
     showToast('That is not your current target'); return;
   }
+  // Load only the fields needed to find the killer and reassign targets
+  const { data: allPlayers } = await sb.from('players').select('id, target_id, kills, active').order('name');
+  if (allPlayers) {
+    // Merge into STATE.players without overwriting names or codes already loaded
+    STATE.players = STATE.players.map(p => {
+      const fresh = allPlayers.find(x => x.id === p.id);
+      return fresh ? { ...p, target_id: fresh.target_id, kills: fresh.kills, active: fresh.active } : p;
+    });
+  }
   await eliminatePlayer(victim.id);
   STATE.killCodeInput = '';
   showToast('Target eliminated!');
