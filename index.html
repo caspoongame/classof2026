@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spoon Game — Cary Academy</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --ca-dark:   #004E7D;
+    --ca-mid:    #468AC9;
+    --ca-yellow: #FFCE02;
+    --ca-gray:   #433e43;
+    --bg:        #f5f4f0;
+    --surface:   #ffffff;
+    --border:    rgba(0,0,0,0.09);
+    --text:      #1a1a1a;
+    --muted:     #6b6b6b;
+    --danger:    #c0392b;
+    --success:   #1a7a4a;
+    --font:      'DM Sans', sans-serif;
+    --mono:      'DM Mono', monospace;
+    --radius:    12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  .header {
+    background: var(--ca-dark);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 11px; }
+  .header-logo {
+    width: 34px; height: 34px;
+    background: var(--ca-yellow);
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 13px; color: var(--ca-dark);
+    letter-spacing: 0.02em; flex-shrink: 0;
+  }
+  .header-title { font-size: 16px; font-weight: 500; color: #fff; }
+  .header-sub   { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 1px; }
+
+  .content { max-width: 860px; margin: 0 auto; padding: 22px 18px 48px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 14px;
+  }
+  .card-label {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  }
+
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px,1fr)); gap: 10px; margin-bottom: 14px; }
+  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 13px 15px; }
+  .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+  .metric-value { font-size: 24px; font-weight: 500; color: var(--ca-dark); line-height: 1; }
+  .metric-value.sm { font-size: 17px; padding-top: 3px; }
+
+  .status-banner { border-radius: var(--radius); padding: 13px 16px; margin-bottom: 14px; border-left: 4px solid; }
+  .status-banner.single { background: #e8f2fb; border-color: var(--ca-dark); }
+  .status-banner.open   { background: #fef3e2; border-color: #d4850a; }
+  .status-banner.forks  { background: #fdecea; border-color: var(--danger); }
+  .status-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 2px; }
+  .status-banner.single .status-label { color: var(--ca-dark); }
+  .status-banner.open   .status-label { color: #a86200; }
+  .status-banner.forks  .status-label { color: var(--danger); }
+  .status-desc { font-size: 14px; color: var(--text); }
+
+  .target-box {
+    background: var(--surface); border: 2px solid var(--ca-mid);
+    border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px;
+  }
+  .target-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ca-mid); margin-bottom: 5px; }
+  .target-name  { font-size: 28px; font-weight: 500; color: var(--ca-dark); }
+
+  .code-display {
+    background: var(--ca-dark); color: var(--ca-yellow);
+    font-family: var(--mono); font-size: 26px; letter-spacing: 0.2em;
+    text-align: center; padding: 16px; border-radius: var(--radius-sm);
+    margin-bottom: 14px; font-weight: 500;
+  }
+
+  .prog-wrap { background: #e8edf2; border-radius: 6px; height: 7px; overflow: hidden; margin-top: 8px; }
+  .prog-fill  { height: 100%; background: var(--ca-dark); border-radius: 6px; transition: width 0.5s ease; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 9px 18px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    font-size: 14px; font-weight: 500; font-family: var(--font);
+    cursor: pointer; transition: all 0.15s;
+    background: var(--surface); color: var(--text); white-space: nowrap;
+  }
+  .btn:hover  { background: #f0f0ec; }
+  .btn:active { transform: scale(0.98); }
+  .btn.primary { background: var(--ca-dark); color: #fff; border-color: var(--ca-dark); }
+  .btn.primary:hover { background: #003d63; }
+  .btn.yellow  { background: var(--ca-yellow); color: var(--ca-dark); border-color: var(--ca-yellow); }
+  .btn.yellow:hover { background: #f0c000; }
+  .btn.danger  { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .btn.danger:hover { background: #a93226; }
+  .btn.sm { padding: 5px 11px; font-size: 12px; border-radius: 6px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  input[type=text], input[type=password] {
+    width: 100%; padding: 10px 13px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 15px; font-family: var(--font);
+    background: var(--surface); color: var(--text);
+    outline: none; transition: border-color 0.15s;
+  }
+  input[type=text]:focus, input[type=password]:focus { border-color: var(--ca-mid); }
+  input.mono { font-family: var(--mono); letter-spacing: 0.12em; text-align: center; font-size: 18px; }
+  .input-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .input-row input { flex: 1; }
+
+  .login-wrap {
+    min-height: calc(100vh - 62px);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .login-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 34px 36px; width: 100%; max-width: 360px;
+  }
+  .login-logo {
+    width: 54px; height: 54px; background: var(--ca-dark);
+    border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600; color: var(--ca-yellow);
+    letter-spacing: 0.04em; margin: 0 auto 18px;
+  }
+  .login-title { text-align: center; font-size: 20px; font-weight: 500; margin-bottom: 3px; }
+  .login-sub   { text-align: center; font-size: 13px; color: var(--muted); margin-bottom: 26px; }
+  .mode-tabs   { display: flex; gap: 5px; margin-bottom: 22px; }
+  .mode-tab {
+    flex: 1; padding: 7px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); font-size: 13px; font-weight: 400;
+    cursor: pointer; background: var(--surface); color: var(--muted);
+    font-family: var(--font); text-align: center; transition: all 0.15s;
+  }
+  .mode-tab.active { background: var(--ca-dark); color: #fff; border-color: var(--ca-dark); font-weight: 500; }
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 13px; color: var(--muted); margin-bottom: 5px; display: block; }
+  .login-btn {
+    width: 100%; padding: 11px; background: var(--ca-dark); color: #fff;
+    border: none; border-radius: var(--radius-sm);
+    font-size: 15px; font-weight: 500; cursor: pointer; font-family: var(--font);
+    transition: background 0.15s;
+  }
+  .login-btn:hover { background: #003d63; }
+  .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .login-error { font-size: 13px; color: var(--danger); text-align: center; margin-top: 10px; min-height: 18px; }
+
+  .admin-tabs { display: flex; gap: 4px; background: rgba(255,255,255,0.12); border-radius: 9px; padding: 3px; }
+  .admin-tab {
+    padding: 5px 14px; border-radius: 7px; font-size: 13px;
+    border: none; cursor: pointer; font-family: var(--font);
+    background: transparent; color: rgba(255,255,255,0.65); transition: all 0.15s;
+  }
+  .admin-tab.active { background: #fff; color: var(--ca-dark); font-weight: 500; }
+  .admin-tab:hover:not(.active) { color: #fff; background: rgba(255,255,255,0.15); }
+
+  .col-header {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 0 0 8px; border-bottom: 1px solid var(--border); margin-bottom: 2px;
+  }
+  .player-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .player-row:last-child { border-bottom: none; }
+  .pn { flex: 1.6; font-weight: 500; color: var(--text); }
+  .pt { flex: 1.6; color: var(--muted); }
+  .pc { flex: 1; font-family: var(--mono); font-size: 12px; color: var(--ca-mid); }
+  .pk { flex: 0.4; text-align: center; color: var(--muted); }
+  .ps { flex: 0.7; }
+  .pa { flex: 1.6; display: flex; gap: 4px; flex-wrap: wrap; }
+
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .badge.active { background: #e0f3e8; color: #1a7a4a; }
+  .badge.elim   { background: #fdecea; color: var(--danger); }
+
+  .status-selector { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .status-btn {
+    padding: 7px 16px; border-radius: 20px; font-size: 13px;
+    border: 1px solid var(--border); cursor: pointer;
+    background: #f0f0ec; color: var(--muted); font-family: var(--font); transition: all 0.15s;
+  }
+  .status-btn.sel-single { background: #e8f2fb; color: var(--ca-dark); border-color: var(--ca-mid); font-weight: 500; }
+  .status-btn.sel-open   { background: #fef3e2; color: #a86200; border-color: #d4850a; font-weight: 500; }
+  .status-btn.sel-forks  { background: #fdecea; color: var(--danger); border-color: var(--danger); font-weight: 500; }
+
+  .print-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 14px; }
+  .player-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .pc-header { background: var(--ca-dark); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
+  .pc-school { font-size: 11px; color: rgba(255,255,255,0.55); letter-spacing: 0.05em; text-transform: uppercase; }
+  .pc-game   { font-size: 14px; font-weight: 500; color: #fff; }
+  .pc-year   { font-size: 11px; color: var(--ca-yellow); }
+  .pc-body   { padding: 14px 16px; display: flex; gap: 12px; align-items: center; }
+  .pc-info   { flex: 1; }
+  .pc-name   { font-size: 18px; font-weight: 500; color: var(--ca-dark); margin-bottom: 8px; }
+  .pc-code-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .pc-code   { font-family: var(--mono); font-size: 21px; font-weight: 500; color: var(--ca-dark); letter-spacing: 0.15em; background: #e8f2fb; padding: 6px 10px; border-radius: 6px; display: inline-block; }
+  .pc-qr     { width: 76px; height: 76px; flex-shrink: 0; border-radius: 6px; overflow: hidden; background: #fff; }
+  .pc-footer { padding: 8px 16px; border-top: 1px solid var(--border); background: #f8f8f6; }
+  .pc-instructions { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+  .forks-wrap { background: var(--ca-dark); min-height: calc(100vh - 62px); }
+  .forks-content { padding: 22px 20px; max-width: 860px; margin: 0 auto; }
+  .forks-stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .forks-stat { background: rgba(255,255,255,0.1); border-radius: var(--radius-sm); padding: 12px 18px; }
+  .forks-stat-num   { font-size: 30px; font-weight: 500; color: var(--ca-yellow); line-height: 1; }
+  .forks-stat-label { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 3px; }
+  .forks-prog { background: rgba(255,255,255,0.15); border-radius: 6px; height: 5px; margin-bottom: 22px; overflow: hidden; }
+  .forks-prog-fill { height: 100%; background: var(--ca-yellow); border-radius: 6px; transition: width 0.5s ease; }
+  .forks-section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 12px; }
+  .forks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px,1fr)); gap: 8px; margin-bottom: 22px; }
+  .fork-tile { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); padding: 11px 13px; }
+  .fork-tile.out { opacity: 0.45; background: rgba(192,57,43,0.15); border-color: rgba(192,57,43,0.2); }
+  .fork-tile-name   { font-size: 13px; font-weight: 500; color: #fff; margin-bottom: 3px; }
+  .fork-tile-status { font-size: 11px; }
+  .fork-tile-status.alive { color: #6fcf97; }
+  .fork-tile-status.out   { color: rgba(255,255,255,0.3); }
+
+  #toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: #1a1a1a; color: #fff; padding: 10px 20px;
+    border-radius: var(--radius-sm); font-size: 14px;
+    opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 999; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; }
+
+  .loading-wrap { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 62px); }
+  .spinner { width: 28px; height: 28px; border: 2.5px solid var(--border); border-top-color: var(--ca-dark); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .elim-overlay { text-align: center; padding: 30px 20px; }
+  .elim-icon  { font-size: 44px; margin-bottom: 12px; }
+  .elim-title { font-size: 24px; font-weight: 500; color: var(--danger); margin-bottom: 6px; }
+  .elim-sub   { font-size: 14px; color: var(--muted); margin-bottom: 22px; }
+
+  .sign-out-btn { color: rgba(255,255,255,0.65); border-color: rgba(255,255,255,0.25); font-size: 13px; padding: 6px 14px; }
+  .sign-out-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .add-row { display: flex; gap: 8px; margin-top: 12px; }
+  .add-row input { flex: 1; }
+  .empty { text-align: center; padding: 20px; font-size: 13px; color: var(--muted); }
+
+  @media (max-width: 600px) {
+    .pc { display: none; } .pk { display: none; }
+    .content { padding: 16px 12px 48px; }
+    .login-card { padding: 28px 22px; }
+    .admin-tabs { display: none; }
+  }
+  @media print {
+    .header, .no-print { display: none !important; }
+    .print-grid { grid-template-columns: repeat(2, 1fr); }
+    .player-card { break-inside: avoid; }
+    body { background: white; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://hjlonriesoousgwsdysj.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqbG9ucmllc29vdXNnd3NkeXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NDAxMTAsImV4cCI6MjA5MTAxNjExMH0.4cgyCcnAkhqfHhd45FYup8EQAwwgsQGvDWg10qtCK_0';
+const APP_URL = window.location.href.split('?')[0];
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let STATE = {
+  view: 'loading',
+  loginMode: 'player',
+  loginCode: '',
+  loginPassword: '',
+  currentPlayer: null,
+  players: [],
+  forks: [],
+  gameStatus: 'single',
+  killCodeInput: '',
+  adminTab: 'players',
+  adminNewName: '',
+  forkInputName: '',
+};
+
+// ── CRYPTO: hash password in the browser using SubtleCrypto ──
+async function sha256hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function checkPassword(key, plaintext) {
+  const hash = await sha256hex(plaintext);
+  const { data, error } = await sb.from('passwords').select('hash').eq('key', key).single();
+  if (error || !data) return false;
+  return data.hash === hash;
+}
+
+// ── HELPERS ──
+function genCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+function activePlayers() { return STATE.players.filter(p => p.active); }
+function pct() {
+  if (!STATE.players.length) return 0;
+  return Math.round((activePlayers().length / STATE.players.length) * 100);
+}
+function getTarget(player) {
+  return STATE.players.find(p => p.id === player.target_id) || null;
+}
+
+// ── DATA ──
+async function loadAll() {
+  const [{ data: players }, { data: forks }, { data: gs }] = await Promise.all([
+    sb.from('players').select('*').order('name'),
+    sb.from('forks').select('*').order('name'),
+    sb.from('game_state').select('*').eq('id', 1).single(),
+  ]);
+  STATE.players    = players || [];
+  STATE.forks      = forks  || [];
+  STATE.gameStatus = gs?.status || 'single';
+}
+
+async function loadPublic() {
+  const [{ data: players }, { data: forks }, { data: gs }] = await Promise.all([
+    sb.from('players').select('id, name, active').order('name'),
+    sb.from('forks').select('*').order('name'),
+    sb.from('game_state').select('status').eq('id', 1).single(),
+  ]);
+  STATE.players    = players || [];
+  STATE.forks      = forks  || [];
+  STATE.gameStatus = gs?.status || 'single';
+}
+
+async function setGameStatus(status) {
+  STATE.gameStatus = status;
+  await sb.from('game_state').update({ status }).eq('id', 1);
+  showToast('Status updated');
+  render();
+}
+
+async function eliminatePlayer(id) {
+  const victim = STATE.players.find(p => p.id === id);
+  if (!victim || !victim.active) return;
+  const killer = STATE.players.find(p => p.target_id === id && p.active);
+  const ops = [sb.from('players').update({ active: false }).eq('id', id)];
+  if (killer) {
+    ops.push(sb.from('players').update({ kills: killer.kills + 1, target_id: victim.target_id }).eq('id', killer.id));
+  }
+  await Promise.all(ops);
+  await loadAll();
+  if (STATE.currentPlayer?.id === killer?.id) {
+    STATE.currentPlayer = STATE.players.find(p => p.id === killer.id);
+  }
+  showToast('Player eliminated');
+  render();
+}
+
+async function submitKillCode(code) {
+  const trimmed = code.trim().toUpperCase();
+  const { data: victim } = await sb.from('players').select('*').eq('code', trimmed).eq('active', true).single();
+  if (!victim) { showToast('Invalid or already used code'); return; }
+  const killer = STATE.currentPlayer;
+  if (killer.id === victim.id) { showToast("That's your own code!"); return; }
+  if (STATE.gameStatus !== 'open' && killer.target_id !== victim.id) {
+    showToast('That is not your current target'); return;
+  }
+  await eliminatePlayer(victim.id);
+  STATE.killCodeInput = '';
+  showToast('Target eliminated!');
+  render();
+}
+
+async function reassignTargets() {
+  const active = activePlayers();
+  if (active.length < 2) { showToast('Need at least 2 active players'); return; }
+  const shuffled = [...active].sort(() => Math.random() - 0.5);
+  await Promise.all(shuffled.map((p, i) =>
+    sb.from('players').update({ target_id: shuffled[(i + 1) % shuffled.length].id }).eq('id', p.id)
+  ));
+  await loadAll();
+  showToast('Targets reshuffled!');
+  render();
+}
+
+async function addPlayer() {
+  const name = STATE.adminNewName.trim();
+  if (!name) return;
+  await sb.from('players').insert({ name, code: genCode(), kills: 0, active: true });
+  STATE.adminNewName = '';
+  await loadAll();
+  showToast('Player added');
+  render();
+}
+
+async function removePlayer(id) {
+  const victim = STATE.players.find(p => p.id === id);
+  const killer = STATE.players.find(p => p.target_id === id);
+  const ops = [sb.from('players').delete().eq('id', id)];
+  if (killer) ops.push(sb.from('players').update({ target_id: victim.target_id }).eq('id', killer.id));
+  await Promise.all(ops);
+  await loadAll();
+  showToast('Player removed');
+  render();
+}
+
+async function resetCode(id) {
+  await sb.from('players').update({ code: genCode() }).eq('id', id);
+  await loadAll();
+  showToast('Code reset');
+  render();
+}
+
+async function restorePlayer(id) {
+  await sb.from('players').update({ active: true }).eq('id', id);
+  await loadAll();
+  showToast('Player restored');
+  render();
+}
+
+async function addFork() {
+  const name = STATE.forkInputName.trim();
+  if (!name) return;
+  await sb.from('forks').insert({ name });
+  STATE.forkInputName = '';
+  await loadAll();
+  showToast('Fork added');
+  render();
+}
+
+async function removeFork(id) {
+  await sb.from('forks').delete().eq('id', id);
+  await loadAll();
+  showToast('Fork removed');
+  render();
+}
+
+// ── AUTH ──
+function handlePasswordKeydown(e) {
+  if (e.key === 'Enter') handlePasswordSubmit();
+}
+function handlePasswordSubmit() {
+  if (STATE.loginMode === 'admin') handleAdminLogin();
+  else handleForkLogin();
+}
+async function handlePlayerLogin() {
+  const btn = document.getElementById('login-btn');
+  if (btn) btn.disabled = true;
+  const { data, error } = await sb
+    .from('players')
+    .select('id, name, code, target_id, kills, active')
+    .eq('code', STATE.loginCode.trim().toUpperCase())
+    .single();
+  if (error || !data) {
+    showLoginError('Code not found. Check with your admin.');
+    if (btn) btn.disabled = false;
+    return;
+  }
+  STATE.currentPlayer = data;
+  const [{ data: gs }, { data: players }] = await Promise.all([
+    sb.from('game_state').select('status').eq('id',1).single(),
+    sb.from('players').select('id, name, active').order('name'),
+  ]);
+  STATE.gameStatus = gs?.status || 'single';
+  STATE.players = players || [];
+  STATE.view = 'player';
+  render();
+}
+
+async function handleAdminLogin() {
+  const btn = document.getElementById('login-btn');
+  if (btn) btn.disabled = true;
+  const ok = await checkPassword('admin', STATE.loginPassword);
+  if (!ok) {
+    showLoginError('Incorrect password.');
+    if (btn) btn.disabled = false;
+    return;
+  }
+  await loadAll();
+  STATE.view = 'admin';
+  render();
+}
+
+async function handleForkLogin() {
+  const btn = document.getElementById('login-btn');
+  if (btn) btn.disabled = true;
+  const ok = await checkPassword('fork', STATE.loginPassword);
+  if (!ok) {
+    showLoginError('Incorrect password.');
+    if (btn) btn.disabled = false;
+    return;
+  }
+  await loadPublic();
+  STATE.view = 'forks';
+  render();
+}
+
+function showLoginError(msg) {
+  const e = document.getElementById('login-err');
+  if (e) e.textContent = msg;
+}
+
+function doSignOut() {
+  STATE.view = 'login'; STATE.currentPlayer = null;
+  STATE.loginCode = ''; STATE.loginPassword = '';
+  STATE.players = []; STATE.forks = [];
+  render();
+}
+
+// ── RENDER ──
+function render() {
+  const app = document.getElementById('app');
+  switch (STATE.view) {
+    case 'loading': app.innerHTML = renderLoading(); break;
+    case 'login':   app.innerHTML = renderLogin();   break;
+    case 'player':  app.innerHTML = renderPlayer();  break;
+    case 'admin':
+      app.innerHTML = renderAdmin();
+      if (STATE.adminTab === 'print') setTimeout(generateQRCodes, 120);
+      break;
+    case 'forks':   app.innerHTML = renderForks();   break;
+  }
+}
+
+function headerHTML(subtitle, rightHtml='') {
+  return `<div class="header">
+    <div class="header-left">
+      <div class="header-logo">CA</div>
+      <div><div class="header-title">Spoon Game</div><div class="header-sub">${subtitle}</div></div>
+    </div>
+    <div>${rightHtml}</div>
+  </div>`;
+}
+
+function signOutBtn() {
+  return `<button class="btn sign-out-btn" onclick="doSignOut()">Sign out</button>`;
+}
+
+function renderLoading() {
+  return `<div class="loading-wrap"><div class="spinner"></div></div>`;
+}
+
+function renderLogin() {
+  return `
+    <div class="login-wrap"><div class="login-card">
+      <div class="login-logo">CA</div>
+      <div class="login-title">Spoon Game</div>
+      <div class="login-sub">Cary Academy · Class of 2025</div>
+      <div class="mode-tabs">
+        <div class="mode-tab ${STATE.loginMode==='player'?'active':''}" onclick="STATE.loginMode='player';render()">Player</div>
+        <div class="mode-tab ${STATE.loginMode==='admin'?'active':''}"  onclick="STATE.loginMode='admin';render()">Admin</div>
+        <div class="mode-tab ${STATE.loginMode==='fork'?'active':''}"   onclick="STATE.loginMode='fork';render()">Fork</div>
+      </div>
+      ${STATE.loginMode === 'player' ? `
+        <div class="form-group">
+          <label class="form-label">Your access code</label>
+          <input type="text" class="mono" maxlength="6" placeholder="XXXXXX"
+            value="${STATE.loginCode}" oninput="STATE.loginCode=this.value.toUpperCase()"
+            autocomplete="off" autocapitalize="characters"
+            onkeydown="if(event.key==='Enter')handlePlayerLogin()">
+        </div>
+        <button class="login-btn" id="login-btn" onclick="handlePlayerLogin()">Enter Game</button>
+      ` : `
+        <div class="form-group">
+          <label class="form-label">${STATE.loginMode === 'admin' ? 'Admin' : 'Fork'} password</label>
+          <input type="password" placeholder="Password" value="${STATE.loginPassword}"
+            oninput="STATE.loginPassword=this.value"
+            onkeydown="handlePasswordKeydown(event)">
+        </div>
+        <button class="login-btn" id="login-btn"
+          onclick="handlePasswordSubmit()">
+          ${STATE.loginMode==='admin' ? 'Enter Dashboard' : 'View Active Players'}
+        </button>
+      `}
+      <div class="login-error" id="login-err"></div>
+    </div></div>`;
+}
+
+function renderPlayer() {
+  const p = STATE.currentPlayer;
+  const si = {
+    single: { cls:'single', label:'Single target',  desc:'You have one assigned target. Catch them without their spoon in hand.' },
+    open:   { cls:'open',   label:'Open season',     desc:'Anyone can target anyone. Everyone is fair game — stay alert!' },
+    forks:  { cls:'forks',  label:'Forks active',    desc:'Faculty forks are in the game. Watch out for teachers!' },
+  }[STATE.gameStatus] || { cls:'single', label:'Normal play', desc:'' };
+  const isElim = !p.active;
+  const target = getTarget(p);
+  return `
+    ${headerHTML(`Welcome, ${p.name}`, signOutBtn())}
+    <div class="content">
+      ${isElim ? `
+        <div class="card elim-overlay">
+          <div class="elim-icon">🥄</div>
+          <div class="elim-title">You've been eliminated</div>
+          <div class="elim-sub">Your spoon has been taken. Better luck next year!</div>
+          <div style="border-top:1px solid var(--border);padding-top:18px;">
+            <div style="font-size:30px;font-weight:500;color:var(--ca-dark);">${pct()}%</div>
+            <div style="font-size:13px;color:var(--muted);margin:3px 0 10px;">${activePlayers().length} of ${STATE.players.length} players remaining</div>
+            <div class="prog-wrap"><div class="prog-fill" style="width:${pct()}%"></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-label">Game status</div>
+          <div class="status-banner ${si.cls}" style="margin-bottom:0;">
+            <div class="status-label">${si.label}</div>
+            <div class="status-desc">${si.desc}</div>
+          </div>
+        </div>
+      ` : `
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-label">Players remaining</div>
+            <div class="metric-value">${pct()}%</div>
+            <div class="prog-wrap"><div class="prog-fill" style="width:${pct()}%"></div></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Still in game</div>
+            <div class="metric-value sm">${activePlayers().length}<span style="font-size:14px;color:var(--muted);"> / ${STATE.players.length}</span></div>
+          </div>
+        </div>
+        <div class="status-banner ${si.cls}">
+          <div class="status-label">${si.label}</div>
+          <div class="status-desc">${si.desc}</div>
+        </div>
+        ${STATE.gameStatus === 'open' ? `
+          <div class="card">
+            <div class="card-label">Open season — active players</div>
+            ${activePlayers().filter(x=>x.id!==p.id).map(x=>`<div class="player-row"><div class="pn">${x.name}</div></div>`).join('')}
+          </div>
+        ` : `
+          <div class="target-box">
+            <div class="target-label">Your target</div>
+            <div class="target-name">${target ? target.name : 'No target assigned yet'}</div>
+          </div>
+        `}
+        <div class="card">
+          <div class="card-label">Your kill code — give this to whoever eliminates you</div>
+          <div class="code-display">${p.code}</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Enter your target's kill code</div>
+          <div class="input-row">
+            <input type="text" class="mono" maxlength="6" placeholder="XXXXXX"
+              value="${STATE.killCodeInput}" oninput="STATE.killCodeInput=this.value.toUpperCase()"
+              autocomplete="off" autocapitalize="characters"
+              onkeydown="if(event.key==='Enter')submitKillCode(STATE.killCodeInput)">
+            <button class="btn primary" onclick="submitKillCode(STATE.killCodeInput)">Submit</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted);">Enter the 6-character code your target gives you after you catch them without their spoon.</div>
+        </div>
+      `}
+      <div style="text-align:center;margin-top:8px;">
+        <button class="btn sm" onclick="refreshPlayerView()">Refresh</button>
+      </div>
+    </div>`;
+}
+
+async function refreshPlayerView() {
+  const [{ data: p }, { data: gs }, { data: players }] = await Promise.all([
+    sb.from('players').select('id, name, code, target_id, kills, active').eq('id', STATE.currentPlayer.id).single(),
+    sb.from('game_state').select('status').eq('id',1).single(),
+    sb.from('players').select('id, name, active').order('name'),
+  ]);
+  if (p)       STATE.currentPlayer = p;
+  if (gs)      STATE.gameStatus    = gs.status;
+  if (players) STATE.players       = players;
+  render();
+}
+
+function renderAdmin() {
+  const topKiller = [...STATE.players].sort((a,b)=>b.kills-a.kills)[0];
+  const elim = STATE.players.filter(p=>!p.active);
+  return `
+    ${headerHTML('Admin Dashboard', `
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="admin-tabs">
+          <button class="admin-tab ${STATE.adminTab==='players'?'active':''}"    onclick="STATE.adminTab='players';render()">Players</button>
+          <button class="admin-tab ${STATE.adminTab==='print'?'active':''}"      onclick="STATE.adminTab='print';render()">Print cards</button>
+          <button class="admin-tab ${STATE.adminTab==='forksmgmt'?'active':''}"  onclick="STATE.adminTab='forksmgmt';render()">Forks</button>
+        </div>
+        ${signOutBtn()}
+      </div>
+    `)}
+    <div class="content">
+      ${STATE.adminTab === 'players'   ? renderAdminPlayers(topKiller, elim) : ''}
+      ${STATE.adminTab === 'print'     ? renderPrintCards()                   : ''}
+      ${STATE.adminTab === 'forksmgmt' ? renderForksAdmin()                   : ''}
+    </div>`;
+}
+
+function renderAdminPlayers(topKiller, elim) {
+  return `
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Active players</div><div class="metric-value">${activePlayers().length}</div></div>
+      <div class="metric"><div class="metric-label">Eliminated</div><div class="metric-value">${elim.length}</div></div>
+      <div class="metric"><div class="metric-label">% remaining</div><div class="metric-value">${pct()}%</div></div>
+      <div class="metric"><div class="metric-label">Top eliminator</div><div class="metric-value sm">${topKiller ? topKiller.name.split(' ')[0] : '—'}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Game status</div>
+      <div class="status-selector">
+        <button class="status-btn ${STATE.gameStatus==='single'?'sel-single':''}" onclick="setGameStatus('single')">Single target</button>
+        <button class="status-btn ${STATE.gameStatus==='open'?'sel-open':''}"     onclick="setGameStatus('open')">Open season</button>
+        <button class="status-btn ${STATE.gameStatus==='forks'?'sel-forks':''}"   onclick="setGameStatus('forks')">Forks active</button>
+      </div>
+      <button class="btn yellow" onclick="reassignTargets()">Reshuffle all targets</button>
+    </div>
+    <div class="card">
+      <div class="card-label">Players</div>
+      <div class="col-header">
+        <span class="pn">Name</span><span class="pt">Target</span>
+        <span class="pc">Code</span><span class="pk">Kills</span>
+        <span class="ps">Status</span><span class="pa">Actions</span>
+      </div>
+      ${STATE.players.map(p => {
+        const target = STATE.players.find(x => x.id === p.target_id);
+        return `<div class="player-row">
+          <span class="pn">${p.name}</span>
+          <span class="pt">${target ? target.name : '—'}</span>
+          <span class="pc">${p.code}</span>
+          <span class="pk">${p.kills}</span>
+          <span class="ps"><span class="badge ${p.active?'active':'elim'}">${p.active?'active':'out'}</span></span>
+          <span class="pa">
+            <button class="btn sm" onclick="resetCode('${p.id}')">Reset code</button>
+            ${p.active
+              ? `<button class="btn sm danger" onclick="eliminatePlayer('${p.id}')">Eliminate</button>`
+              : `<button class="btn sm" onclick="restorePlayer('${p.id}')">Restore</button>`}
+            <button class="btn sm" onclick="removePlayer('${p.id}')" style="color:var(--muted);">Remove</button>
+          </span>
+        </div>`;
+      }).join('')}
+      ${STATE.players.length === 0 ? `<div class="empty">No players yet. Add some below.</div>` : ''}
+      <div class="add-row">
+        <input type="text" placeholder="New player name" value="${STATE.adminNewName}"
+          oninput="STATE.adminNewName=this.value" onkeydown="if(event.key==='Enter')addPlayer()">
+        <button class="btn primary" onclick="addPlayer()">Add player</button>
+      </div>
+    </div>`;
+}
+
+function renderPrintCards() {
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;" class="no-print">
+      <div>
+        <div style="font-size:16px;font-weight:500;">Player access cards</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:2px;">Print and cut — one card per player. QR code links directly to this app.</div>
+      </div>
+      <button class="btn yellow" onclick="window.print()">Print all cards</button>
+    </div>
+    <div class="print-grid" id="print-grid">
+      ${STATE.players.map(p => `
+        <div class="player-card">
+          <div class="pc-header">
+            <div><div class="pc-school">Cary Academy</div><div class="pc-game">Spoon Game 2025</div></div>
+            <div class="pc-year">Senior Class</div>
+          </div>
+          <div class="pc-body">
+            <div class="pc-info">
+              <div class="pc-name">${p.name}</div>
+              <div class="pc-code-label">Access code</div>
+              <div class="pc-code">${p.code}</div>
+            </div>
+            <div class="pc-qr" id="qr-${p.id}"></div>
+          </div>
+          <div class="pc-footer">
+            <div class="pc-instructions">Scan the QR code or visit the game URL and enter your code. Keep this card safe — your code is your identity in the game.</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+function renderForksAdmin() {
+  return `
+    <div class="card">
+      <div class="card-label">How to change passwords</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.7;">
+        Run this in the Supabase SQL Editor, replacing the value with your new password:<br>
+        <code style="font-family:var(--mono);font-size:12px;background:#f0f0ec;padding:2px 6px;border-radius:4px;">
+          update passwords set hash = encode(digest('newpassword', 'sha256'), 'hex') where key = 'admin';
+        </code>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Active forks</div>
+      ${STATE.forks.map(f => `
+        <div class="player-row">
+          <span class="pn">${f.name}</span>
+          <span style="flex:2;font-size:12px;color:var(--muted);">Free-roaming · can tag any student</span>
+          <button class="btn sm danger" onclick="removeFork('${f.id}')">Remove</button>
+        </div>
+      `).join('')}
+      ${STATE.forks.length === 0 ? `<div class="empty">No forks added yet.</div>` : ''}
+      <div class="add-row">
+        <input type="text" placeholder="Fork name (e.g. Ms. Thompson)" value="${STATE.forkInputName}"
+          oninput="STATE.forkInputName=this.value" onkeydown="if(event.key==='Enter')addFork()">
+        <button class="btn primary" onclick="addFork()">Add fork</button>
+      </div>
+    </div>`;
+}
+
+function renderForks() {
+  const active = STATE.players.filter(p => p.active);
+  return `
+    <div class="forks-wrap">
+      ${headerHTML('Fork View — Spoon Game 2025', signOutBtn())}
+      <div class="forks-content">
+        <div class="forks-stats">
+          <div class="forks-stat"><div class="forks-stat-num">${active.length}</div><div class="forks-stat-label">Players still in</div></div>
+          <div class="forks-stat"><div class="forks-stat-num">${pct()}%</div><div class="forks-stat-label">Remaining</div></div>
+          <div class="forks-stat"><div class="forks-stat-num">${STATE.players.length - active.length}</div><div class="forks-stat-label">Eliminated</div></div>
+        </div>
+        <div class="forks-prog"><div class="forks-prog-fill" style="width:${pct()}%"></div></div>
+        <div class="forks-section-label">All players</div>
+        <div class="forks-grid">
+          ${STATE.players.map(p => `
+            <div class="fork-tile ${p.active?'':'out'}">
+              <div class="fork-tile-name">${p.name}</div>
+              <div class="fork-tile-status ${p.active?'alive':'out'}">${p.active?'In game':'Eliminated'}</div>
+            </div>
+          `).join('')}
+        </div>
+        ${STATE.forks.length > 0 ? `
+          <div class="forks-section-label">Active forks</div>
+          <div class="forks-grid">
+            ${STATE.forks.map(f => `
+              <div class="fork-tile">
+                <div class="fork-tile-name">${f.name}</div>
+                <div class="fork-tile-status alive">Fork · active</div>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+        <div style="text-align:center;margin-top:16px;">
+          <button class="btn sm" style="background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.2);" onclick="refreshForkView()">Refresh</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function refreshForkView() {
+  await loadPublic();
+  render();
+}
+
+function generateQRCodes() {
+  if (typeof QRCode === 'undefined') return;
+  STATE.players.forEach(p => {
+    const el = document.getElementById('qr-' + p.id);
+    if (el && !el.hasChildNodes()) {
+      try {
+        new QRCode(el, { text: APP_URL, width: 76, height: 76, colorDark: '#004E7D', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+      } catch(e) {}
+    }
+  });
+}
+
+// ── BOOT ──
+(async () => {
+  STATE.view = 'loading';
+  render();
+  await new Promise(r => setTimeout(r, 300));
+  STATE.view = 'login';
+  render();
+})();
+</script>
+</body>
+</html>
