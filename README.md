@@ -160,7 +160,7 @@ update passwords set hash = encode(digest('newpassword', 'sha256'), 'hex') where
 ## Official Rules of Play
 
 1. Above all else: this is a game for the well-mannered and polite. No tomfoolery, hoodwinkery, or — worst of all — shenanigans.
-2. The game starts at **noon on Wednesday, April 16th**. Target assignments distributed that morning.
+2. The game starts at the time designated by the Spoon Game Governing Board. Target assignments distributed that morning.
 3. Eliminate your target by touching them with your spoon outside a safe zone and saying **"You've been spooned, friend."**
 4. No elimination if your target's spoon is literally in hand — not attached to the wrist, in hand.
 5. Safe zones: classrooms during class, bathrooms, safety drills, sports practices/games, and any moving motorized vehicle.
@@ -173,4 +173,3 @@ update passwords set hash = encode(digest('newpassword', 'sha256'), 'hex') where
 ---
 
 ## Governed by the Spoon Game Governing Body (SGGB)
-*Cary Academy · Class of 2025*
