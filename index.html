@@ -294,6 +294,21 @@
   .board-tagline { font-size: 13px; color: var(--muted); font-style: italic; margin-bottom: 14px; line-height: 1.6; }
   .sggb-badge { display: inline-block; background: var(--ca-yellow); color: var(--ca-dark); font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.04em; }
 
+  /* ── CONFIRM DIALOG ── */
+  .dialog-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 500; padding: 20px;
+  }
+  .dialog {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px 26px;
+    width: 100%; max-width: 380px;
+  }
+  .dialog-title { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .dialog-body  { font-size: 14px; color: var(--muted); margin-bottom: 22px; line-height: 1.6; }
+  .dialog-btns  { display: flex; gap: 8px; justify-content: flex-end; }
+
   @media print {
     .header, .no-print { display: none !important; }
     .print-grid { grid-template-columns: repeat(2, 1fr); }
@@ -395,6 +410,14 @@ async function setGameStatus(status) {
   render();
 }
 
+function confirmEliminatePlayer(id, name) {
+  confirm(
+    'Manually eliminate player?',
+    \`<strong>\${name}</strong> will be marked as eliminated and their target will be passed to whoever was targeting them.\`,
+    'Eliminate', 'danger',
+    () => eliminatePlayer(id)
+  );
+}
 async function eliminatePlayer(id) {
   const victim = STATE.players.find(p => p.id === id);
   if (!victim || !victim.active) return;
@@ -438,6 +461,14 @@ async function submitKillCode(code) {
   render();
 }
 
+function confirmReassignTargets() {
+  confirm(
+    'Reshuffle all targets?',
+    'Every active player will be assigned a new random target. This cannot be undone.',
+    'Reshuffle', 'yellow',
+    () => reassignTargets()
+  );
+}
 async function reassignTargets() {
   const active = activePlayers();
   if (active.length < 2) { showToast('Need at least 2 active players'); return; }
@@ -460,6 +491,14 @@ async function addPlayer() {
   render();
 }
 
+function confirmRemovePlayer(id, name) {
+  confirm(
+    'Remove player?',
+    \`<strong>\${name}</strong> will be permanently removed from the game. This cannot be undone.\`,
+    'Remove', 'danger',
+    () => removePlayer(id)
+  );
+}
 async function removePlayer(id) {
   const victim = STATE.players.find(p => p.id === id);
   const killer = STATE.players.find(p => p.target_id === id);
@@ -471,6 +510,14 @@ async function removePlayer(id) {
   render();
 }
 
+function confirmResetCode(id, name) {
+  confirm(
+    'Reset access code?',
+    \`This will generate a new code for <strong>\${name}</strong>. Their old code will stop working immediately.\`,
+    'Reset code', 'danger',
+    () => resetCode(id)
+  );
+}
 async function resetCode(id) {
   await sb.from('players').update({ code: genCode() }).eq('id', id);
   await loadAll();
@@ -478,6 +525,14 @@ async function resetCode(id) {
   render();
 }
 
+function confirmRestorePlayer(id, name) {
+  confirm(
+    'Restore player?',
+    \`<strong>\${name}</strong> will be marked as active again. You may need to reassign their target manually.\`,
+    'Restore', 'primary',
+    () => restorePlayer(id)
+  );
+}
 async function restorePlayer(id) {
   await sb.from('players').update({ active: true }).eq('id', id);
   await loadAll();
@@ -586,7 +641,7 @@ function renderPublicBoard() {
       <div style="text-align:center;margin-bottom:18px;">
         <div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Presented by the</div>
         <span class="sggb-badge">Spoon Game Governing Body</span>
-        <div style="font-size:22px;font-weight:500;color:var(--ca-dark);margin:8px 0 4px;">Senior Spoon Game 2026</div>
+        <div style="font-size:22px;font-weight:500;color:var(--ca-dark);margin:8px 0 4px;">Senior Spoon Game 2025</div>
         <div class="board-tagline">"A game only for the well-mannered and polite.<br>No tomfoolery. No hoodwinkery. Absolutely no shenanigans."</div>
       </div>
       <div class="board-grid">
@@ -606,7 +661,7 @@ function renderPublicBoard() {
           <div class="card-label">Official rules of play</div>
           <ul class="rules-list">
             <li><span class="rule-num">1.</span><span>Above all else: this is a game for the well-mannered and polite. No tomfoolery, hoodwinkery, or — worst of all — shenanigans.</span></li>
-            <li><span class="rule-num">2.</span><span>The game starts at <strong>noon on Wednesday, April 15th</strong>. Target assignments distributed that morning.</span></li>
+            <li><span class="rule-num">2.</span><span>The game starts at <strong>noon on Wednesday, April 16th</strong>. Target assignments distributed that morning.</span></li>
             <li><span class="rule-num">3.</span><span>Eliminate your target by touching them with your spoon <em>outside a safe zone</em> and saying <strong>"You've been spooned, friend."</strong></span></li>
             <li><span class="rule-num">4.</span><span>No elimination if your target's spoon is <em>literally in hand</em>. Not attached to the wrist — in hand.</span></li>
             <li><span class="rule-num">5.</span><span>Safe zones: classrooms during class, bathrooms, safety drills, sports practice/games, and any moving motorized vehicle.</span></li>
@@ -619,6 +674,37 @@ function renderPublicBoard() {
         </div>
       </div>
     </div>`;
+}
+
+// ── CONFIRM DIALOG ──
+let pendingAction = null;
+
+function confirm(title, body, actionLabel, actionClass, onConfirm) {
+  pendingAction = onConfirm;
+  const backdrop = document.createElement('div');
+  backdrop.className = 'dialog-backdrop';
+  backdrop.id = 'confirm-dialog';
+  backdrop.innerHTML = `
+    <div class="dialog">
+      <div class="dialog-title">${title}</div>
+      <div class="dialog-body">${body}</div>
+      <div class="dialog-btns">
+        <button class="btn" onclick="closeConfirm()">Cancel</button>
+        <button class="btn ${actionClass}" onclick="runConfirm()">${actionLabel}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(backdrop);
+}
+
+function closeConfirm() {
+  const d = document.getElementById('confirm-dialog');
+  if (d) d.remove();
+  pendingAction = null;
+}
+
+function runConfirm() {
+  closeConfirm();
+  if (pendingAction) pendingAction();
 }
 
 // ── RENDER ──
@@ -682,7 +768,7 @@ function renderLogin() {
           </svg>
         </div>
         <div class="login-title">Spoon Game</div>
-      <div class="login-sub">Cary Academy · Class of 2026</div>
+      <div class="login-sub">Cary Academy · Class of 2025</div>
       <div class="mode-tabs">
         <div class="mode-tab ${STATE.loginMode==='player'?'active':''}" onclick="STATE.loginMode='player';render()">Player</div>
         <div class="mode-tab ${STATE.loginMode==='admin'?'active':''}"  onclick="STATE.loginMode='admin';render()">Admin</div>
@@ -840,7 +926,7 @@ function renderAdminPlayers(topKiller, elim) {
         <button class="status-btn ${STATE.gameStatus==='open'?'sel-open':''}"     onclick="setGameStatus('open')">Open season</button>
         <button class="status-btn ${STATE.gameStatus==='forks'?'sel-forks':''}"   onclick="setGameStatus('forks')">Forks active</button>
       </div>
-      <button class="btn yellow" onclick="reassignTargets()">Reshuffle all targets</button>
+      <button class="btn yellow" onclick="confirmReassignTargets()">Reshuffle all targets</button>
     </div>
     <div class="card">
       <div class="card-label">Players</div>
@@ -858,11 +944,11 @@ function renderAdminPlayers(topKiller, elim) {
           <span class="pk">${p.kills}</span>
           <span class="ps"><span class="badge ${p.active?'active':'elim'}">${p.active?'active':'out'}</span></span>
           <span class="pa">
-            <button class="btn sm" onclick="resetCode('${p.id}')">Reset code</button>
+            <button class="btn sm" onclick="confirmResetCode('${p.id}', '${p.name}')">Reset code</button>
             ${p.active
-              ? `<button class="btn sm danger" onclick="eliminatePlayer('${p.id}')">Eliminate</button>`
-              : `<button class="btn sm" onclick="restorePlayer('${p.id}')">Restore</button>`}
-            <button class="btn sm" onclick="removePlayer('${p.id}')" style="color:var(--muted);">Remove</button>
+              ? `<button class="btn sm danger" onclick="confirmEliminatePlayer('${p.id}', '${p.name}')">Eliminate</button>`
+              : `<button class="btn sm" onclick="confirmRestorePlayer('${p.id}', '${p.name}')">Restore</button>`}
+            <button class="btn sm" onclick="confirmRemovePlayer('${p.id}', '${p.name}')" style="color:var(--muted);">Remove</button>
           </span>
         </div>`;
       }).join('')}
@@ -888,7 +974,7 @@ function renderPrintCards() {
       ${STATE.players.map(p => `
         <div class="player-card">
           <div class="pc-header">
-            <div><div class="pc-school">Cary Academy</div><div class="pc-game">Spoon Game 2026</div></div>
+            <div><div class="pc-school">Cary Academy</div><div class="pc-game">Spoon Game 2025</div></div>
             <div class="pc-year">Senior Class</div>
           </div>
           <div class="pc-body">
@@ -940,7 +1026,7 @@ function renderForks() {
   const active = STATE.players.filter(p => p.active);
   return `
     <div class="forks-wrap">
-      ${headerHTML('Fork View — Spoon Game 2026', signOutBtn())}
+      ${headerHTML('Fork View — Spoon Game 2025', signOutBtn())}
       <div class="forks-content">
         <div class="forks-stats">
           <div class="forks-stat"><div class="forks-stat-num">${active.length}</div><div class="forks-stat-label">Players still in</div></div>
