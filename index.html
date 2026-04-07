@@ -461,6 +461,14 @@ async function submitKillCode(code) {
   render();
 }
 
+async function assignTarget(playerId, targetId) {
+  if (!targetId) return;
+  await sb.from('players').update({ target_id: targetId }).eq('id', playerId);
+  await loadAll();
+  showToast('Target assigned');
+  render();
+}
+
 function confirmReassignTargets() {
   showConfirm(
     'Reshuffle all targets?',
@@ -937,9 +945,15 @@ function renderAdminPlayers(topKiller, elim) {
       </div>
       ${STATE.players.map(p => {
         const target = STATE.players.find(x => x.id === p.target_id);
+        const otherActive = STATE.players.filter(x => x.id !== p.id && x.active);
         return `<div class="player-row">
           <span class="pn">${p.name}</span>
-          <span class="pt">${target ? target.name : '—'}</span>
+          <span class="pt" style="flex:1.6;">
+            <select style="font-size:12px;padding:4px 6px;max-width:140px;border-radius:6px;" onchange="assignTarget('${p.id}', this.value)">
+              <option value="">${target ? target.name : '— none —'}</option>
+              ${otherActive.map(x => `<option value="${x.id}" ${p.target_id === x.id ? 'selected' : ''}>${x.name}</option>`).join('')}
+            </select>
+          </span>
           <span class="pc">${p.code}</span>
           <span class="pk">${p.kills}</span>
           <span class="ps"><span class="badge ${p.active?'active':'elim'}">${p.active?'active':'out'}</span></span>
