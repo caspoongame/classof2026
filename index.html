@@ -359,12 +359,22 @@ function showToast(msg) {
 }
 
 function activePlayers() { return STATE.players.filter(p => p.active); }
+
 function pct() {
   if (!STATE.players.length) return 0;
   return Math.round((activePlayers().length / STATE.players.length) * 100);
 }
+
 function getTarget(player) {
   return STATE.players.find(p => p.id === player.target_id) || null;
+}
+
+async function fetchPlayerDataByCode(code) {
+  return await sb
+    .from('players')
+    .select('id, name, code, target_id, kills, active')
+    .eq('code', STATE.loginCode.trim().toUpperCase())
+    .single();
 }
 
 // ── DATA ──
@@ -417,7 +427,7 @@ async function eliminatePlayer(id) {
   await Promise.all(ops);
   await loadAll();
   await loadEliminations();
-  if (STATE.currentPlayer?.id === killer?.id) {
+  if (killer && STATE.currentPlayer?.id === killer.id) {
     STATE.currentPlayer = STATE.players.find(p => p.id === killer.id);
   }
   showToast('Player eliminated');
@@ -485,7 +495,21 @@ async function addPlayer() {
   if (STATE.players.find(p => p.email && p.email.toLowerCase() === email)) {
     showToast('A player with that email already exists'); return;
   }
-  await sb.from('players').insert({ name, email, code: genCode(), kills: 0, active: true });
+  let code = genCode();
+  // look for players with this newly generated code
+  // to avoid ID collisions. Capped at 10 retries.
+  for (let i = 0; i < 10; i++) {
+    const { data, error } = await fetchPlayerDataByCode(code);
+    if (error || !data) {
+      break;
+    }
+    code = genCode();
+    if (i == 9) {
+      showToast("Failed to add player; ID collision occured over 9 times. Please let Mr. Pugsley know about this.");
+      return;
+    }
+  }
+  await sb.from('players').insert({ name, email, code, kills: 0, active: true });
   STATE.adminNewName  = '';
   STATE.adminNewEmail = '';
   await loadAll();
@@ -575,11 +599,7 @@ function handlePasswordSubmit() {
 async function handlePlayerLogin() {
   const btn = document.getElementById('login-btn');
   if (btn) btn.disabled = true;
-  const { data, error } = await sb
-    .from('players')
-    .select('id, name, code, target_id, kills, active')
-    .eq('code', STATE.loginCode.trim().toUpperCase())
-    .single();
+  const { data, error } = await fetchPlayerDataByCode(STATE.loginCode.trim().toUpperCase())
   if (error || !data) {
     showLoginError('Code not found. Check with your admin.');
     if (btn) btn.disabled = false;
