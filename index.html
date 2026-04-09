@@ -296,9 +296,10 @@
 
   /* ── CONFIRM DIALOG ── */
   .dialog-backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.45);
     display: flex; align-items: center; justify-content: center;
-    z-index: 500; padding: 20px;
+    z-index: 9999; padding: 20px;
   }
   .dialog {
     background: var(--surface); border: 1px solid var(--border);
@@ -688,6 +689,7 @@ function renderPublicBoard() {
 let pendingAction = null;
 
 function showConfirm(title, body, actionLabel, actionClass, onConfirm) {
+  closeConfirm();
   pendingAction = onConfirm;
   const backdrop = document.createElement('div');
   backdrop.className = 'dialog-backdrop';
@@ -702,6 +704,9 @@ function showConfirm(title, body, actionLabel, actionClass, onConfirm) {
       </div>
     </div>`;
   document.body.appendChild(backdrop);
+  backdrop.addEventListener('click', function(e) {
+    if (e.target === backdrop) closeConfirm();
+  });
 }
 
 function closeConfirm() {
@@ -946,6 +951,7 @@ function renderAdminPlayers(topKiller, elim) {
       ${STATE.players.map(p => {
         const target = STATE.players.find(x => x.id === p.target_id);
         const otherActive = STATE.players.filter(x => x.id !== p.id && x.active);
+        const safeName = p.name.replace(/'/g, "\\'");
         return `<div class="player-row">
           <span class="pn">${p.name}</span>
           <span class="pt" style="flex:1.6;">
@@ -958,11 +964,11 @@ function renderAdminPlayers(topKiller, elim) {
           <span class="pk">${p.kills}</span>
           <span class="ps"><span class="badge ${p.active?'active':'elim'}">${p.active?'active':'out'}</span></span>
           <span class="pa">
-            <button class="btn sm" onclick="confirmResetCode('${p.id}', '${p.name}')">Reset code</button>
+            <button class="btn sm" onclick="confirmResetCode('${p.id}', '${safeName}')">Reset code</button>
             ${p.active
-              ? `<button class="btn sm danger" onclick="confirmEliminatePlayer('${p.id}', '${p.name}')">Eliminate</button>`
-              : `<button class="btn sm" onclick="confirmRestorePlayer('${p.id}', '${p.name}')">Restore</button>`}
-            <button class="btn sm" onclick="confirmRemovePlayer('${p.id}', '${p.name}')" style="color:var(--muted);">Remove</button>
+              ? `<button class="btn sm danger" onclick="confirmEliminatePlayer('${p.id}', '${safeName}')">Eliminate</button>`
+              : `<button class="btn sm" onclick="confirmRestorePlayer('${p.id}', '${safeName}')">Restore</button>`}
+            <button class="btn sm" onclick="confirmRemovePlayer('${p.id}', '${safeName}')" style="color:var(--muted);">Remove</button>
           </span>
         </div>`;
       }).join('')}
