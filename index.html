@@ -338,6 +338,7 @@ let STATE = {
   adminNewName: '',
   adminNewEmail: '',
   forkInputName: '',
+  adminPasswordHash: '',
   eliminations: [],
 };
 
@@ -345,7 +346,7 @@ let STATE = {
 const EDGE_FN_URL = 'https://hjlonriesoousgwsdysj.supabase.co/functions/v1/admin-action';
 
 async function adminCall(action, payload) {
-  const passwordHash = await sha256hex(STATE.loginPassword);
+  const passwordHash = STATE.adminPasswordHash;
   const res = await fetch(EDGE_FN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
@@ -632,6 +633,7 @@ async function handleAdminLogin() {
     if (btn) btn.disabled = false;
     return;
   }
+  STATE.adminPasswordHash = await sha256hex(STATE.loginPassword);
   await loadAll();
   STATE.view = 'admin';
   render();
@@ -659,6 +661,7 @@ function showLoginError(msg) {
 function doSignOut() {
   STATE.view = 'login'; STATE.currentPlayer = null;
   STATE.loginCode = ''; STATE.loginPassword = '';
+  STATE.adminPasswordHash = '';
   STATE.players = []; STATE.forks = [];
   render();
 }
