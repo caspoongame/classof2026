@@ -395,19 +395,19 @@ function getTarget(player) {
 
 // ── DATA ──
 async function loadAll() {
-  const [{ data: players }, { data: forks }, { data: gs }] = await Promise.all([
-    sb.from('players').select('*').order('name'),
-    sb.from('forks').select('*').order('name'),
-    sb.from('game_state').select('*').eq('id', 1).single(),
-  ]);
-  STATE.players    = players || [];
-  STATE.forks      = forks  || [];
-  STATE.gameStatus = gs?.status || 'single';
+  try {
+    const data = await adminCall('loadAll', {});
+    STATE.players    = data.players    || [];
+    STATE.forks      = data.forks      || [];
+    STATE.gameStatus = data.gameStatus || 'single';
+  } catch(e) {
+    console.error('loadAll failed:', e);
+  }
 }
 
 async function loadPublic() {
   const [{ data: players }, { data: forks }, { data: gs }] = await Promise.all([
-    sb.from('players').select('id, name, active').order('name'),
+    sb.from('public_players').select('id, name, active, kills').order('name'),
     sb.from('forks').select('*').order('name'),
     sb.from('game_state').select('status').eq('id', 1).single(),
   ]);
@@ -445,7 +445,7 @@ async function eliminatePlayer(id) {
 
 async function submitKillCode(code) {
   const trimmed = code.trim().toUpperCase();
-  const { data: victim } = await sb.from('players').select('*').eq('code', trimmed).eq('active', true).single();
+  const { data: victim } = await sb.from('player_self').select('*').eq('code', trimmed).eq('active', true).single();
   if (!victim) { showToast('Invalid or already used code'); return; }
   const killer = STATE.currentPlayer;
   if (killer.id === victim.id) { showToast("That's your own code!"); return; }
@@ -453,9 +453,9 @@ async function submitKillCode(code) {
     showToast('That is not your current target'); return;
   }
   // Load only the fields needed to find the killer and reassign targets
-  const { data: allPlayers } = await sb.from('players').select('id, target_id, kills, active').order('name');
+  // Use player_self view which is accessible to anon but restricted to safe columns
+  const { data: allPlayers } = await sb.from('player_self').select('id, target_id, kills, active').order('name');
   if (allPlayers) {
-    // Merge into STATE.players without overwriting names or codes already loaded
     STATE.players = STATE.players.map(p => {
       const fresh = allPlayers.find(x => x.id === p.id);
       return fresh ? { ...p, target_id: fresh.target_id, kills: fresh.kills, active: fresh.active } : p;
@@ -604,7 +604,7 @@ async function handlePlayerLogin() {
   const btn = document.getElementById('login-btn');
   if (btn) btn.disabled = true;
   const { data, error } = await sb
-    .from('players')
+    .from('player_self')
     .select('id, name, code, target_id, kills, active')
     .eq('code', STATE.loginCode.trim().toUpperCase())
     .single();
@@ -616,7 +616,7 @@ async function handlePlayerLogin() {
   STATE.currentPlayer = data;
   const [{ data: gs }, { data: players }] = await Promise.all([
     sb.from('game_state').select('status').eq('id',1).single(),
-    sb.from('players').select('id, name, active').order('name'),
+    sb.from('public_players').select('id, name, active').order('name'),
   ]);
   STATE.gameStatus = gs?.status || 'single';
   STATE.players = players || [];
@@ -1052,9 +1052,9 @@ function renderPlayer() {
 
 async function refreshPlayerView() {
   const [{ data: p }, { data: gs }, { data: players }] = await Promise.all([
-    sb.from('players').select('id, name, code, target_id, kills, active').eq('id', STATE.currentPlayer.id).single(),
+    sb.from('player_self').select('id, name, code, target_id, kills, active').eq('id', STATE.currentPlayer.id).single(),
     sb.from('game_state').select('status').eq('id',1).single(),
-    sb.from('players').select('id, name, active').order('name'),
+    sb.from('public_players').select('id, name, active').order('name'),
   ]);
   if (p)       STATE.currentPlayer = p;
   if (gs)      STATE.gameStatus    = gs.status;
