@@ -308,8 +308,9 @@
 <div id="toast"></div>
 
 <script>
-const SUPABASE_URL = 'https://hjlonriesoousgwsdysj.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqbG9ucmllc29vdXNnd3NkeXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NDAxMTAsImV4cCI6MjA5MTAxNjExMH0.4cgyCcnAkhqfHhd45FYup8EQAwwgsQGvDWg10qtCK_0';
+// TODO update these with the production url and publishable key.
+const SUPABASE_URL = 'https://engnvqxrpijmbuyrvpho.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_shkZ1URBFfzKhvYOJr-m1Q_0NkbmumB';
 const APP_URL = window.location.href.split('?')[0];
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -330,19 +331,6 @@ let STATE = {
   forkInputName: '',
   eliminations: [],
 };
-
-// ── CRYPTO: hash password in the browser using SubtleCrypto ──
-async function sha256hex(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-async function checkPassword(key, plaintext) {
-  const hash = await sha256hex(plaintext);
-  const { data, error } = await sb.from('passwords').select('hash').eq('key', key).single();
-  if (error || !data) return false;
-  return data.hash === hash;
-}
 
 // ── HELPERS ──
 function genCode() {
@@ -416,21 +404,13 @@ function confirmEliminatePlayer(id, name) {
   );
 }
 async function eliminatePlayer(id) {
-  const victim = STATE.players.find(p => p.id === id);
-  if (!victim || !victim.active) return;
-  const killer = STATE.players.find(p => p.target_id === id && p.active);
-  const ops = [sb.from('players').update({ active: false, target_id: null }).eq('id', id)];
-  if (killer) {
-    ops.push(sb.from('players').update({ kills: killer.kills + 1, target_id: victim.target_id }).eq('id', killer.id));
-    ops.push(sb.from('eliminations').insert({ victim_id: id, victim_name: victim.name, killer_id: killer.id, killer_name: killer.name }));
-  }
-  await Promise.all(ops);
+  await sb.rpc('eliminate_player', { victim_id: id })
   await loadAll();
   await loadEliminations();
-  if (killer && STATE.currentPlayer?.id === killer.id) {
-    STATE.currentPlayer = STATE.players.find(p => p.id === killer.id);
-  }
   showToast('Player eliminated');
+  if (STATE.loginMode === 'player') {
+    await refreshPlayerView();
+  }
   render();
 }
 
@@ -619,8 +599,11 @@ async function handlePlayerLogin() {
 async function handleAdminLogin() {
   const btn = document.getElementById('login-btn');
   if (btn) btn.disabled = true;
-  const ok = await checkPassword('admin', STATE.loginPassword);
-  if (!ok) {
+  const { data, error } = await sb.auth.signInWithPassword({ 
+    email: 'admin@dummyemail.org', 
+    password: STATE.loginPassword 
+  });
+  if (!data || error) {
     showLoginError('Incorrect password.');
     if (btn) btn.disabled = false;
     return;
@@ -633,8 +616,11 @@ async function handleAdminLogin() {
 async function handleForkLogin() {
   const btn = document.getElementById('login-btn');
   if (btn) btn.disabled = true;
-  const ok = await checkPassword('fork', STATE.loginPassword);
-  if (!ok) {
+  const { data, error } = await sb.auth.signInWithPassword({ 
+    email: 'forks@dummyemail.org', 
+    password: STATE.loginPassword 
+  });
+  if (!data || error) {
     showLoginError('Incorrect password.');
     if (btn) btn.disabled = false;
     return;

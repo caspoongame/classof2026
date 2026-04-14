@@ -41,7 +41,7 @@ Each senior is assigned a secret target and given a unique 6-character eliminati
 
 ## Setup
 
-### 1. Supabase
+### 1. Supabase (Important: Daniel has updated these, so you should delete all tables before doing this)
 
 Create a free project at [supabase.com](https://supabase.com), selecting **East US (North Virginia)** as the region. Enable both **Data API** and **automatic RLS** during setup.
 
@@ -53,6 +53,7 @@ create table players (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   code text unique not null,
+  email text unique not null,
   target_id uuid references players(id),
   kills integer default 0,
   active boolean default true,
@@ -80,48 +81,135 @@ create table eliminations (
   created_at timestamptz default now()
 );
 
-create table passwords (
-  key text primary key,
-  hash text not null
-);
-
 insert into game_state (id, status) values (1, 'single');
 ```
 
 **Row Level Security:**
 ```sql
+-- Enable RLS on everything
 alter table players enable row level security;
 alter table forks enable row level security;
 alter table game_state enable row level security;
 alter table eliminations enable row level security;
-alter table passwords enable row level security;
 
-create policy "read players"      on players     for select using (true);
-create policy "insert players"    on players     for insert with check (true);
-create policy "update players"    on players     for update using (true);
-create policy "delete players"    on players     for delete using (true);
+-- Mark Read Permissions as Public
+create policy "read players"
+on players for select
+using (true);
 
-create policy "read forks"        on forks       for select using (true);
-create policy "insert forks"      on forks       for insert with check (true);
-create policy "update forks"      on forks       for update using (true);
-create policy "delete forks"      on forks       for delete using (true);
+create policy "read forks"
+on forks for select
+using (true);
 
-create policy "read state"        on game_state  for select using (true);
-create policy "update state"      on game_state  for update using (true);
+create policy "read state"
+on game_state for select
+using (true);
 
-create policy "read eliminations" on eliminations for select using (true);
-create policy "write eliminations" on eliminations for insert with check (true);
+create policy "read eliminations"
+on eliminations for select
+using (true);
 
-create policy "read passwords"    on passwords   for select using (true);
-create policy "write passwords"   on passwords   for all using (true);
+-- Mark Insert, Delete, and Update permissions as auth-only
+create policy "insert players authed"
+on players for insert
+to authenticated
+with check (true);
+
+create policy "update players authed"
+on players for update
+to authenticated
+using (true);
+
+create policy "delete players authed"
+on players for delete
+to authenticated
+using (true);
+
+create policy "insert forks authed"
+on forks for insert
+to authenticated
+with check (true);
+
+create policy "update forks authed"
+on forks for update
+to authenticated
+using (true);
+
+create policy "delete forks authed"
+on forks for delete
+to authenticated
+using (true);
+
+create policy "update state authed"
+on game_state for update
+to authenticated
+using (true);
+
+create policy "write eliminations authed"
+on eliminations for insert
+to authenticated
+with check (true);
+
+create policy "delete eliminations authed"
+on eliminations for delete
+to authenticated;
 ```
 
-**Passwords** (replace values before running):
+**Setup RPC-based player elimination (for security purposes)**
 ```sql
-insert into passwords (key, hash) values
-  ('admin', encode(digest('your_admin_password', 'sha256'), 'hex')),
-  ('fork',  encode(digest('your_fork_password',  'sha256'), 'hex'));
+-- For public users, only allow updating the active field
+create or replace function eliminate_player(victim_id uuid)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  victim_record players%rowtype;
+  killer_record players%rowtype;
+begin
+  -- Get victim
+  select * into victim_record
+  from players
+  where id = victim_id;
+
+  if victim_record is null or victim_record.active = false then
+    return;
+  end if;
+
+  -- Find killer
+  select * into killer_record
+  from players
+  where target_id = victim_id and active = true;
+
+  -- Eliminate victim
+  update players
+  set active = false,
+      target_id = null
+  where id = victim_id;
+
+  if killer_record is not null then
+    -- Update killer
+    update players
+    set kills = kills + 1,
+        target_id = victim_record.target_id
+    where id = killer_record.id;
+
+    -- Insert elimination record
+    insert into eliminations (victim_id, victim_name, killer_id, killer_name)
+    values (
+      victim_record.id,
+      victim_record.name,
+      killer_record.id,
+      killer_record.name
+    );
+  end if;
+end;
+$$;
+
+grant execute on function eliminate_player(uuid) to anon;
 ```
+
+Then, go to "Authentication" and then "Users" in the left sidebar. Add 2 users: the first with the email "admin@dummyemail.org", and the second with "forks@dummyemail.org". The password you give to each will be the admin/forks passwords, respectively.
 
 ### 2. Deploy to GitHub Pages
 
@@ -150,7 +238,6 @@ update passwords set hash = encode(digest('newpassword', 'sha256'), 'hex') where
 
 ## Security model
 
-- **Passwords** are never stored in the HTML file. The browser hashes the entered password using the built-in `SubtleCrypto` API and compares it against the hash in Supabase. A student reading source code sees only hashing logic, never the password itself.
 - **Player data** is partitioned by role. Players only receive their own row plus a minimal list of names for target display — no other codes or targets are ever sent to their browser.
 - **Target IDs** are fetched only as needed (during elimination processing) and only the fields required for reassignment are requested.
 - **Admin and fork access** is gated client-side by password and server-side by the anonymous Supabase key — all writes go through RLS policies.
