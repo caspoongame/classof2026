@@ -1126,13 +1126,13 @@ function renderAdmin() {
       </div>
     `)}
     <div class="content">
-      ${STATE.adminTab === 'players'   ? renderAdminPlayers(topKiller, elim) : ''}
+      ${STATE.adminTab === 'players'   ? renderAdminPlayers(topKiller, elim, killCounts) : ''}
       ${STATE.adminTab === 'print'     ? renderPrintCards()                   : ''}
       ${STATE.adminTab === 'forksmgmt' ? renderForksAdmin()                   : ''}
     </div>`;
 }
 
-function renderAdminPlayers(topKiller, elim) {
+function renderAdminPlayers(topKiller, elim, killCounts) {
   return `
     <div class="metrics">
       <div class="metric"><div class="metric-label">Active players</div><div class="metric-value">${activePlayers().length}</div></div>
