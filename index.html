@@ -397,13 +397,19 @@ function getTarget(player) {
 // ── DATA ──
 async function loadAll() {
   try {
+    if (!STATE.adminPasswordHash) {
+      // Not logged in as admin - skip
+      return;
+    }
     const data = await adminCall('loadAll', {});
+    if (!data || !data.players) return;
     STATE.players       = data.players    || [];
     STATE.forks         = data.forks      || [];
     STATE.gameStatus    = data.gameStatus || 'single';
     STATE.accessEnabled = data.accessEnabled ?? false;
   } catch(e) {
-    console.error('loadAll failed:', e);
+    console.error('loadAll failed:', e.message);
+    showToast('Refresh failed: ' + e.message);
   }
 }
 
