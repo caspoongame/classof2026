@@ -1375,22 +1375,24 @@ function renderReports() {
     if (!players.length) return '<div class="empty">No players in this category.</div>';
     const cols = 3;
     const rows = Math.ceil(players.length / cols);
-    let html = '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:0;">';
-    for (let col = 0; col < cols; col++) {
+    // Build cols arrays: numbers go down each column sequentially
+    const columns = Array.from({length: cols}, (_, c) =>
+      players.slice(c * rows, (c + 1) * rows)
+        .map((p, r) => ({ p, num: c * rows + r + 1 }))
+    );
+    let html = '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:0;align-items:start;">';
+    for (let c = 0; c < cols; c++) {
       html += '<div>';
-      html += '<div style="display:flex;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">'
-        + '<span style="width:28px;">#</span><span>Name</span></div>';
-      for (let row = 0; row < rows; row++) {
-        const idx = col * rows + row;
-        if (idx >= players.length) {
+      for (let r = 0; r < rows; r++) {
+        const entry = columns[c][r];
+        if (!entry) {
           html += '<div style="padding:6px 10px;border-bottom:1px solid var(--border);"></div>';
-          continue;
+        } else {
+          html += '<div style="display:flex;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border);background:' + (r%2===0?'var(--color-background-secondary)':'var(--surface)') + '">'
+            + '<span style="width:28px;color:var(--muted);font-size:12px;">' + entry.num + '</span>'
+            + '<span style="font-weight:500;font-size:13px;">' + entry.p.name + '</span>'
+            + '</div>';
         }
-        const p = players[idx];
-        html += '<div style="display:flex;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border);background:' + (row%2===0?'var(--color-background-secondary)':'var(--surface)') + '">'
-          + '<span style="width:28px;color:var(--muted);font-size:12px;">' + (idx+1) + '</span>'
-          + '<span style="font-weight:500;font-size:13px;">' + p.name + '</span>'
-          + '</div>';
       }
       html += '</div>';
     }
