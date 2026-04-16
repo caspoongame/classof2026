@@ -1436,7 +1436,7 @@ function renderReports() {
     + '</div>'
     + '<div class="card">'
     + '<div class="card-label">All eliminated players — ' + eliminated.length + ' total</div>'
-    + pTable(eliminated)
+    + pTable([...eliminated].reverse())
     + '</div>';
 }
 
