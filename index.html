@@ -475,7 +475,11 @@ async function submitKillCode(code) {
     body: JSON.stringify({ action: 'lookupCode', payload: { code: trimmed }, passwordHash: 'player' })
   });
   const victimData = await victimRes.json();
-  if (!victimRes.ok || victimData.error || !victimData.player) { showToast('Invalid or already used code'); return; }
+  const errorMsg = enforcePasswordRateLimit(victimRes.ok && !victimData.error && victimData.player);
+  if (errorMsg != null) {
+    showToast(errorMsg);
+    return;
+  }
   const victim = victimData.player;
   const killer = STATE.currentPlayer;
   if (killer.id === victim.id) { showToast("That's your own code!"); return; }
@@ -637,6 +641,36 @@ async function removeFork(id) {
 }
 
 // ── AUTH ──
+const MAX_LOGIN_ATTEMPTS = 10;
+const PASSWORD_TIMEOUT_SECS = 300.0;
+
+function resetLoginState() {
+  window.localStorage.setItem("CASpoonGame_LoginAttempts", "1");
+  window.localStorage.setItem("CASpoonGame_LastLoginTime", new Date().toString());
+}
+
+function enforcePasswordRateLimit(passwordCorrect) {
+  const lastLoginTimeStr = window.localStorage.getItem("CASpoonGame_LastLoginTime");
+  let loginAttempts = parseInt(window.localStorage.getItem("CASpoonGame_LoginAttempts"));
+  if (Number.isNaN(loginAttempts) || lastLoginTimeStr == null) {
+    resetLoginState();
+    return passwordCorrect ? null : 'Your code/password is incorrect.';
+  } 
+  const timeRemaining = PASSWORD_TIMEOUT_SECS - Math.abs(new Date() - new Date(lastLoginTimeStr)) / 1000.0;
+  if (timeRemaining > 0 && loginAttempts > MAX_LOGIN_ATTEMPTS) {
+    return 'Try again in ' + timeRemaining.toString() + ' seconds';
+  } else if (passwordCorrect) {
+    resetLoginState();
+    return null;
+  } else {
+    window.localStorage.setItem("CASpoonGame_LoginAttempts", (loginAttempts + 1).toString());
+    window.localStorage.setItem("CASpoonGame_LastLoginTime", new Date().toString());
+    return loginAttempts + 1 > MAX_LOGIN_ATTEMPTS 
+      ? 'Lmao, stop hacking. You are in timeout for 5 min.'
+      : 'Your code/password is incorrect.';
+  }
+}
+
 function handlePasswordKeydown(e) {
   if (e.key === 'Enter') handlePasswordSubmit();
 }
@@ -658,8 +692,9 @@ async function handlePlayerLogin() {
     })
   });
   const loginData = await res.json();
-  if (!res.ok || loginData.error) {
-    showLoginError(loginData.error || 'Code not found. Check with your admin.');
+  const errorMsg = enforcePasswordRateLimit(res.ok && !loginData.error);
+  if (errorMsg) {
+    showLoginError(errorMsg);
     if (btn) btn.disabled = false;
     return;
   }
@@ -677,8 +712,10 @@ async function handleAdminLogin() {
   const btn = document.getElementById('login-btn');
   if (btn) btn.disabled = true;
   const ok = await checkPassword('admin', STATE.loginPassword);
-  if (!ok) {
-    showLoginError('Incorrect password.');
+  console.log(ok);
+  const errorMsg = enforcePasswordRateLimit(ok);
+  if (errorMsg != null) {
+    showLoginError(errorMsg);
     if (btn) btn.disabled = false;
     return;
   }
@@ -692,8 +729,9 @@ async function handleForkLogin() {
   const btn = document.getElementById('login-btn');
   if (btn) btn.disabled = true;
   const ok = await checkPassword('fork', STATE.loginPassword);
-  if (!ok) {
-    showLoginError('Incorrect password.');
+  const errorMsg = enforcePasswordRateLimit(ok);
+  if (errorMsg != null) {
+    showLoginError(errorMsg);
     if (btn) btn.disabled = false;
     return;
   }
