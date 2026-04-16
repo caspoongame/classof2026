@@ -901,16 +901,11 @@ async function updateSpoons(playerId, spoonsRemaining) {
 }
 
 function toggleSpoon(playerId, currentSpoons, spoonIndex) {
-  // spoonIndex: 1 = first spoon, 2 = second spoon
-  // If clicking a gold spoon, mark it used (decrease); if grey, restore it (increase)
-  let newVal;
-  if (spoonIndex === 2) {
-    // Second spoon (rightmost): toggle between 2 and 1
-    newVal = currentSpoons >= 2 ? 1 : 2;
-  } else {
-    // First spoon (leftmost): toggle between 1 and 0
-    newVal = currentSpoons >= 1 ? 0 : 1;
-  }
+  // Use bitmask: bit 0 = spoon 1, bit 1 = spoon 2
+  // So: 0=both used, 1=spoon1 only, 2=spoon2 only, 3=both intact
+  const val = currentSpoons === null || currentSpoons === undefined ? 3 : currentSpoons;
+  const bit = spoonIndex === 1 ? 1 : 2;
+  const newVal = (val & bit) ? (val & ~bit) : (val | bit);
   updateSpoons(playerId, newVal);
 }
 
@@ -1280,15 +1275,15 @@ function renderAdminPlayers(topKiller, elim, killCounts) {
           <span class="pk">${killCounts[p.name] || 0}</span>
           <span style="flex:0.7;">
             <div class="spoon-icons">
-              <svg class="spoon-svg ${(p.spoons_remaining||2) >= 1 ? '' : 'used'}" width="14" height="32" viewBox="0 0 14 32"
+              <svg class="spoon-svg ${((p.spoons_remaining===null||p.spoons_remaining===undefined?3:p.spoons_remaining) & 1) ? '' : 'used'}" width="14" height="32" viewBox="0 0 14 32"
                 onclick="toggleSpoon('${p.id}', ${p.spoons_remaining||2}, 1)"
-                title="${(p.spoons_remaining||2) >= 1 ? 'Spoon 1 intact — click to mark used' : 'Spoon 1 used — click to restore'}"
+                title="${((p.spoons_remaining===null||p.spoons_remaining===undefined?3:p.spoons_remaining) & 1) ? 'Spoon 1 intact — click to mark used' : 'Spoon 1 used — click to restore'}"
                 xmlns="http://www.w3.org/2000/svg">
                 <path class="spoon-path" d="M7 1 C3.5 1 1 3.5 1 6.5 C1 9.5 3 12 5.5 12.8 Q6 13.2 6 14.5 L5.8 29 Q5.8 31 7 31 Q8.2 31 8.2 29 L8 14.5 Q8 13.2 8.5 12.8 C11 12 13 9.5 13 6.5 C13 3.5 10.5 1 7 1 Z"/>
               </svg>
-              <svg class="spoon-svg ${(p.spoons_remaining||2) >= 2 ? '' : 'used'}" width="14" height="32" viewBox="0 0 14 32"
+              <svg class="spoon-svg ${((p.spoons_remaining===null||p.spoons_remaining===undefined?3:p.spoons_remaining) & 2) ? '' : 'used'}" width="14" height="32" viewBox="0 0 14 32"
                 onclick="toggleSpoon('${p.id}', ${p.spoons_remaining||2}, 2)"
-                title="${(p.spoons_remaining||2) >= 2 ? 'Spoon 2 intact — click to mark used' : 'Spoon 2 used — click to restore'}"
+                title="${((p.spoons_remaining===null||p.spoons_remaining===undefined?3:p.spoons_remaining) & 2) ? 'Spoon 2 intact — click to mark used' : 'Spoon 2 used — click to restore'}"
                 xmlns="http://www.w3.org/2000/svg">
                 <path class="spoon-path" d="M7 1 C3.5 1 1 3.5 1 6.5 C1 9.5 3 12 5.5 12.8 Q6 13.2 6 14.5 L5.8 29 Q5.8 31 7 31 Q8.2 31 8.2 29 L8 14.5 Q8 13.2 8.5 12.8 C11 12 13 9.5 13 6.5 C13 3.5 10.5 1 7 1 Z"/>
               </svg>
