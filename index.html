@@ -1255,11 +1255,12 @@ function renderAdminPlayers(topKiller, elim, killCounts) {
       <div class="card-label">Players</div>
       <div class="col-header">
         <span class="pn">Name</span>
-        <span style="flex:1.4;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">Email</span>
-        <span style="flex:1.4;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">Target</span>
-        <span class="pc">Code</span><span class="pk">Elim.</span>
-        <span style="flex:0.7;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">Spoons</span>
-        <span class="ps">Status</span><span class="pa">Actions</span>
+        <span style="flex:1.6;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">Target</span>
+        <span class="pc">Code</span>
+        <span class="pk">Elim.</span>
+        <span style="flex:0.6;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">Spoons</span>
+        <span class="ps">Status</span>
+        <span class="pa">Actions</span>
       </div>
       ${STATE.players.map(p => {
         const target = STATE.players.find(x => x.id === p.target_id);
@@ -1267,7 +1268,7 @@ function renderAdminPlayers(topKiller, elim, killCounts) {
         const safeName = p.name.replace(/'/g, "\\'");
         return `<div class="player-row" style="flex-wrap:wrap;gap:6px 8px;">
           <span class="pn">${p.name}</span>
-          <span style="flex:1.4;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.email || '—'}</span>
+
           <span style="flex:1.4;">
             <select style="font-size:12px;padding:4px 6px;width:100%;border-radius:6px;" onchange="assignTarget('${p.id}', this.value)">
               <option value="">— none —</option>
