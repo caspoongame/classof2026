@@ -910,6 +910,9 @@ function sortedPlayers(killCounts) {
   const col = STATE.adminSortCol;
   const dir = STATE.adminSortDir === 'asc' ? 1 : -1;
   return [...STATE.players].sort((a, b) => {
+    // Always sort eliminated players to the bottom
+    if (a.active && !b.active) return -1;
+    if (!a.active && b.active) return  1;
     let av, bv;
     switch (col) {
       case 'name':    av = a.name.toLowerCase();       bv = b.name.toLowerCase();       break;
