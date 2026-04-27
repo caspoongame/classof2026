@@ -850,9 +850,8 @@ function renderPublicFooter() {
             `).join('')}
         </div>
         <div class="card">
-          <div class="card-label">Summary of rules of play</div>
+          <div class="card-label">Official rules of play</div>
           <ul class="rules-list">
-            <li><span class="rule-num">--</span><span><strong>NOTE: These are a summary of the rules. Official rules come from Mr. Shepherd. Please reference those if you have any questions</strong></span></li>
             <li><span class="rule-num">1.</span><span>Above all else: this is a game for the well-mannered and polite. No tomfoolery, hoodwinkery, or — worst of all — shenanigans.</span></li>
             <li><span class="rule-num">2.</span><span>The game starts at <strong>noon on Thursday, April 16th</strong>. Target assignments distributed that morning.</span></li>
             <li><span class="rule-num">3.</span><span>Eliminate your target by touching them with your spoon <em>outside a safe zone</em> and saying <strong>"You've been spooned, friend."</strong></span></li>
@@ -1296,6 +1295,7 @@ function renderAdminPlayers(topKiller, elim, killCounts) {
       <div class="col-header" style="cursor:default;">
         <span class="pn" style="cursor:pointer;" onclick="sortBy('name')">Name ${sortArrow('name')}</span>
         <span style="flex:1.6;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;cursor:pointer;" onclick="sortBy('target')">Target ${sortArrow('target')}</span>
+        <span style="flex:1.4;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">Targeted by</span>
         <span class="pc" style="cursor:pointer;" onclick="sortBy('code')">Code ${sortArrow('code')}</span>
         <span class="pk" style="cursor:pointer;" onclick="sortBy('elim')">Elim. ${sortArrow('elim')}</span>
         <span style="flex:0.6;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;cursor:pointer;" onclick="sortBy('spoons')">Spoons ${sortArrow('spoons')}</span>
@@ -1315,6 +1315,7 @@ function renderAdminPlayers(topKiller, elim, killCounts) {
               ${otherActive.map(x => `<option value="${x.id}" ${p.target_id === x.id ? 'selected' : ''}>${x.name}</option>`).join('')}
             </select>
           </span>
+          <span style="flex:1.4;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${STATE.players.find(x => x.target_id === p.id && x.active)?.name || '—'}</span>
           <span class="pc">${p.code}</span>
           <span class="pk">${killCounts[p.name] || 0}</span>
           <span style="flex:0.7;">
