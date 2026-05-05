@@ -348,6 +348,7 @@ let STATE = {
   adminSortDir: 'asc',
   reportDateFrom: '',
   reportDateTo: '',
+  forkKillCode: '',
   adminNewEmail: '',
   forkInputName: '',
   adminPasswordHash: '',
@@ -844,7 +845,7 @@ function renderPublicFooter() {
             : STATE.eliminations.map(e => `
               <div class="elim-row">
                 <span class="elim-victim">${e.victim_name}</span>
-                <span class="elim-by">spooned by</span>
+                <span class="elim-by">${e.fork ? 'forked by' : 'spooned by'}</span>
                 <span class="elim-killer">${e.killer_name}</span>
               </div>
             `).join('')}
@@ -928,6 +929,64 @@ function sortedPlayers(killCounts) {
     if (av > bv) return  1 * dir;
     return 0;
   });
+}
+
+// ── FORK ELIMINATIONS ──
+const FORK_ADJECTIVES = [
+  'Menacing','Devious','Cunning','Ruthless','Sneaky','Diabolical','Treacherous',
+  'Wicked','Crafty','Sinister','Nefarious','Sly','Vicious','Calculating','Merciless',
+  'Ferocious','Relentless','Shadowy','Mysterious','Unstoppable'
+];
+const FORK_NOUNS = [
+  'Ladle','Tine','Spatula','Whisk','Skewer','Colander','Grater','Tongs',
+  'Mongoose','Biscuit','Pelican','Badger','Turnip','Ferret','Marmoset',
+  'Wolverine','Platypus','Narwhal','Wombat','Pangolin'
+];
+
+function randomForkName() {
+  const adj  = FORK_ADJECTIVES[Math.floor(Math.random() * FORK_ADJECTIVES.length)];
+  const noun = FORK_NOUNS[Math.floor(Math.random() * FORK_NOUNS.length)];
+  return 'The ' + adj + ' ' + noun;
+}
+
+async function forkEliminateByCode(code) {
+  const trimmed = code.trim().toUpperCase();
+  const victimRes = await fetch('https://hjlonriesoousgwsdysj.supabase.co/functions/v1/admin-action', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+    body: JSON.stringify({ action: 'lookupCode', payload: { code: trimmed }, passwordHash: 'player' })
+  });
+  const victimData = await victimRes.json();
+  if (!victimRes.ok || !victimData.player) { showToast('Invalid or already used code'); return; }
+  const forkName = randomForkName();
+  const res = await fetch('https://hjlonriesoousgwsdysj.supabase.co/functions/v1/admin-action', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+    body: JSON.stringify({
+      action: 'forkEliminate',
+      payload: { victimId: victimData.player.id, forkName },
+      passwordHash: 'player'
+    })
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) { showToast('Error: ' + (data.error || 'Unknown')); return; }
+  await loadPublic();
+  await loadEliminations();
+  STATE.forkKillCode = '';
+  showToast(victimData.player.name + ' has been forked by ' + forkName + '!');
+  render();
+}
+
+async function adminForkEliminate(playerId, playerName) {
+  if (!window.confirm('Mark ' + playerName + ' as eliminated by a fork?')) return;
+  const forkName = randomForkName();
+  try {
+    await adminCall('forkEliminate', { victimId: playerId, forkName });
+    await loadAll();
+    await loadEliminations();
+    showToast(playerName + ' forked by ' + forkName + '!');
+    render();
+  } catch(e) { showToast('Error: ' + e.message); }
 }
 
 // ── SPOON TRACKING ──
@@ -1341,7 +1400,8 @@ function renderAdminPlayers(topKiller, elim, killCounts) {
           <span class="pa">
             <button class="btn sm" onclick="confirmResetCode('${p.id}', '${safeName}')">Reset code</button>
             ${p.active
-              ? `<button class="btn sm danger" onclick="confirmEliminatePlayer('${p.id}', '${safeName}')">Eliminate</button>`
+              ? `<button class="btn sm danger" onclick="confirmEliminatePlayer('${p.id}', '${safeName}')">Eliminate</button>
+                 <button class="btn sm" style="color:#854F0B;border-color:#d4850a;" onclick="adminForkEliminate('${p.id}', '${safeName}')">🍴 Fork</button>`
               : `<button class="btn sm" onclick="confirmRestorePlayer('${p.id}', '${safeName}')">Restore</button>`}
             <button class="btn sm" onclick="confirmRemovePlayer('${p.id}', '${safeName}')" style="color:var(--muted);">Remove</button>
           </span>
@@ -1428,7 +1488,11 @@ function renderReports() {
           '<tr style="background:' + (i%2===0?'var(--color-background-secondary)':'var(--surface)') + '">'
           + '<td style="padding:7px 10px;font-weight:500;color:var(--danger);">' + e.victim_name + '</td>'
           + '<td style="padding:7px 10px;font-weight:500;color:var(--ca-dark);">' + e.killer_name + '</td>'
-          + '<td style="padding:7px 10px;"><span class="badge ' + (e.manual?'elim':'active') + '">' + (e.manual?'admin':'player') + '</span></td>'
+          + '<td style="padding:7px 10px;">'
+          + (e.fork ? '<span class="badge" style="background:#FEF3E2;color:#854F0B;">🍴 fork</span>'
+             : e.manual ? '<span class="badge elim">admin</span>'
+             : '<span class="badge active">player</span>')
+          + '</td>'
           + '<td style="padding:7px 10px;color:var(--muted);">' + new Date(e.created_at).toLocaleString() + '</td>'
           + '</tr>'
         ).join('')
@@ -1519,7 +1583,21 @@ function renderForks() {
             `).join('')}
           </div>
         ` : ''}
-        <div style="text-align:center;margin-top:16px;">
+        <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);padding:16px 18px;margin-top:8px;">
+          <div style="font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:10px;">Enter student's elimination code</div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" class="mono" maxlength="6" placeholder="XXXXXX"
+              value="${STATE.forkKillCode}"
+              oninput="STATE.forkKillCode=this.value.toUpperCase()"
+              autocomplete="off" autocapitalize="characters"
+              onkeydown="if(event.key==='Enter')forkEliminateByCode(STATE.forkKillCode)"
+              style="flex:1;background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:white;text-align:center;font-size:18px;letter-spacing:0.12em;">
+            <button class="btn" style="background:var(--ca-yellow);color:var(--ca-dark);border-color:var(--ca-yellow);font-weight:500;"
+              onclick="forkEliminateByCode(STATE.forkKillCode)">🍴 Fork them</button>
+          </div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:8px;">Enter the student's 6-character code after catching them without their spoon.</div>
+        </div>
+        <div style="text-align:center;margin-top:14px;">
           <button class="btn sm" style="background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.2);" onclick="refreshForkView()">Refresh</button>
         </div>
       </div>
